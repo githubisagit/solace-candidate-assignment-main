@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent } from "react";
+import { useEffect, useState, ChangeEvent, useCallback } from "react";
 
 interface Advocate {
   firstName: string;
@@ -38,13 +38,16 @@ export default function Home() {
       });
   }, []);
 
-  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchTerm(value);
+  // Debounced search function
+  const performSearch = useCallback((searchValue: string, advocateList: Advocate[]) => {
+    if (!searchValue.trim()) {
+      setFilteredAdvocates(advocateList);
+      return;
+    }
 
     console.log("filtering advocates...");
-    const filtered = advocates.filter((advocate) => {
-      const searchTermLower = value.toLowerCase();
+    const filtered = advocateList.filter((advocate) => {
+      const searchTermLower = searchValue.toLowerCase();
       return (
         advocate.firstName.toLowerCase().includes(searchTermLower) ||
         advocate.lastName.toLowerCase().includes(searchTermLower) ||
@@ -58,12 +61,27 @@ export default function Home() {
     });
 
     setFilteredAdvocates(filtered);
+  }, []);
+
+  // Debounce search with useEffect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      performSearch(searchTerm, advocates);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, advocates, performSearch]);
+
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    // Search is now handled by debounced useEffect
   };
 
   const onClick = () => {
     console.log(advocates);
     setSearchTerm("");
-    setFilteredAdvocates(advocates);
+    // Filtered advocates will be reset by the debounced useEffect when searchTerm becomes empty
   };
 
   if (loading) {
